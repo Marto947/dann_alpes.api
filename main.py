@@ -32,6 +32,112 @@ def inicio():
 def get_resenas():
     return list(db["resenas"].find({},{"_id":0}))
 
+from datetime import datetime
+
+@app.get("/top-10/{inicio}/{fin}")
+def get_top_10(inicio: datetime,fin: datetime):
+    pipeline = [{"$match": {
+                "fecha_creacion": {
+                    "$gte": inicio,
+                    "$lte": fin
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$id_hotel",
+                "promedio": {"$avg": "$calificacion"}}
+        },
+        {
+            "$limit": 10
+        }
+    ]
+    return list( db["resenas"].aggregate(pipeline))
+
+@app.get("/reputacion/{hotel_id}/{anio}")
+def reputacion(hotel_id:int,anio:int):
+    pipeline = [
+    {
+     "$match": {
+        "$expr": {
+          "$eq": [
+            { "$year": '$fecha_creacion' },
+            anio
+          ]
+        },
+        "id_hotel": hotel_id
+      }
+    },
+    {
+      "$group": {
+        "_id": {
+          "mes": { "$month": '$fecha_creacion' }
+        },
+        "promedio": { "$avg": '$calificacion' }
+      }
+    },
+    {
+      "$project": {
+        "_id": 0,
+        "mes": '$_id.mes',
+        "promedio": { "$round": ["$promedio", 2] }
+      }
+    },
+    { "$sort": { "mes": 1 } }
+]
+    return list( db["resenas"].aggregate(pipeline))
+
+@app.get("/comparacion/{ciudad}/{pais}")
+def comparacion(ciudad:str, pais:str):
+    pipeline = [
+    {
+      "$match": {
+        "ciudad": {
+          "nombre": ciudad,
+          "pais": pais
+        }
+      }
+    },
+    {
+      "$group": {
+        "_id": '$id_hotel',
+        "calificacion_promedio": {
+          "$avg": '$calificacion'
+        },
+        "total_resenas": { "$count": {} },
+        "porcentaje_destacadas": {
+          "$avg": { "$cond": ['$destacada', 100, 0] }
+        },
+        "porcentaje_respuesta": {
+          "$avg": {
+            "$cond": [
+              '$respuesta_administrador',
+              100,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$project": {
+        "_id": 1,
+        "calificacion_promedio": {
+          "$round": ["$calificacion_promedio", 2]
+        },
+        "total_resenas": 1,
+        "porcentaje_destacadas": {
+          "$round": ["$porcentaje_destacadas", 2]
+        },
+        "porcentaje_respuesta": {
+          "$round": ["$porcentaje_respuesta", 2]
+        }
+      }
+    }
+  
+]
+    return list( db["resenas"].aggregate(pipeline))
+
 
 """
 @app.get("/proveedores")
