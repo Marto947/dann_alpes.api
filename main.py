@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import os
 import uvicorn
+from datetime import datetime
 app = FastAPI()
 
 app.add_middleware(
@@ -31,8 +32,6 @@ def inicio():
 @app.get("/resenas")
 def get_resenas():
     return list(db["resenas"].find({},{"_id":0}))
-
-from datetime import datetime
 
 @app.get("/top-10/{inicio}/{fin}")
 def get_top_10(inicio: datetime,fin: datetime):
