@@ -32,73 +32,101 @@ def inicio():
 def get_resenas():
     return list(db["resenas"].find({},{"_id":0}))
 
+# Inserciones
 
 """
-@app.get("/proveedores")
-def get_proovedores():
-    return list(db["proveedores"].find({},{"_id":0}))
+Cada reseña es dependiente del código de confirmación de una reserva.
+Es decir que solo hay una reseña por cada reserva en el sistema.
 
-@app.get("/proveedores/{bebida_id}")
-def get_proovedor_bebida(bebida_id: int):
-    proveedor = db["proveedores"].find_one({"bebidas_suministradas":bebida_id},{"_id":0})
-    return proveedor or {}
+Datos que da el usuario:
+calificacion, comentario
 
-@app.post("/proveedores")
-def post_proveedor(datos:dict):
-    datos["fecha_registro"] = datetime.now().isoformat()
-    db["proveedores"].insert_one(datos)
-    return {"mensaje": "Proveedor registrado"}
+Resto de datos que se autocompletan por detrás en apex:
+id_hotel, nombre_hotel, ciudad y pais, correo, votos, destacada
 
-@app.put("/proveedores/{nombre}")
-def update_proveedor(nombre:str, datos:dict):
-    resultado = db["proveedores"].replace_one({"nombre": nombre},datos)
-    return {"mensaje":"Proveedor actualizado correctamente"}
+Opcional: respuesta_administrador.
 
-@app.patch("/proveedores/{nombre}")
-def patch_proveedor(nombre:str, datos:dict):
-    resultado = db["proveedores"].update_one({"nombre":nombre},{"$set":datos})
-    return {"mensaje":"Campos actualizados correctamente"}
-
-@app.delete("/proveedores/{nombre}")
-def delete_proveedor(nombre:str):
-    resultado = db["proveedores"].delete_one({"nombre":nombre})
-    return {"mensaje":f"Proveedor {nombre} eliminado"}
-
-@app.get("/bares")
-def get_bares():
-    return list(db["Bares"].find({},{"_id":0}))
-
-@app.get('/bares/{bar_id}')
-def get_bar(bar_id: int):
-    bares = db["Bares"].find_one({"_id":bar_id},{"_id":0})  # TODO: completar
-    return bares or {}
-
-@app.get('/bares/{bar_id}/comentarios')
-def get_comentarios(bar_id: int):
-    return list(db["comentarios_bares"].find({"bar_id":bar_id},{"_id":0}))
-
-@app.post('/bares/{bar_id}/comentarios')
-def post_comentario(bar_id: int, datos: dict):
-    datos['bar_id'] = bar_id
-    datos['date']  = datetime.now().isoformat()
-    # TODO: completar
-    db["comentarios_bares"].insert_one(datos)
-    return {'mensaje': 'Comentario guardado'}
-
-# TODO: implementar GET /bares/{bar_id}/eventos
-# Debe retornar todos los eventos del bar desde la colección 'eventos'
-
-@app.get('/bares/{bar_id}/eventos')
-def get_eventos(bar_id:int):
-    return list(db["eventos"].find({"bar_id":bar_id}, {"_id":0}))
-
-# TODO: implementar POST /bares/{bar_id}/eventos  
-# Debe insertar el evento en la colección 'eventos'
-# Recuerde agregar bar_id y fecha_creacion al documento antes de insertar
-@app.post("/bares/{bar_id}/eventos")
-def post_evento(bar_id:int, datos:dict):
-    datos['bar_id'] = bar_id
-    datos['fecha_creacion'] = datetime.now().isoformat()
-    db["eventos"].insert_one(datos)
-    return {"mensaje": "Evento registrado"}
+Constantes del javascript:
+ciudad, pais, hotel_id, correo, nombre_hotel, codigo_confirmacion
+Asumimos que estas constantes ya se encuentran en el diccionario datos.
 """
+#RF1 - Crear reseña
+@app.post("/resenas/{codigo_res}")
+def post_resenas(codigo_res:int, datos:dict):
+    existente = db["resenas"].find_one({"codigo_confirmacion": codigo_res})
+    if existente:
+        return {"error":"La reserva ya tiene una reseña"}
+    
+    datos["codigo_confirmacion"] = codigo_res
+    datos["fecha_creacion"] = datetime.now()
+    datos["votos"] = 0
+    datos["destacada"] = False
+    datos["votos_resena"] = []
+    datos["estado"] = "Publicada"
+    #el id de la reseña se asigna automaticamente al generar la insercion
+    db["resenas"].insert_one(datos)
+    return {"mensaje": "Reseña registrada correctamente"}
+
+#RF2 - Editar reseña
+#El usuario solo podrá modificar el comentario que realiza o la calificación del hotel
+@app.patch("/resena/{codigo_res}")
+def patch_resena(codigo_res:int, datos:dict):
+    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res},{"$set":datos})
+    return {"mensaje":"Campos de reseña actualizados correctamente"}
+
+#RF3 y RF8 - Eliminar reseña (accesible tanto para cliente como para admin)
+@app.patch("/resena/{codigo_res}/eliminar")
+def delete_resena(codigo_res:int):
+    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"estado":"Eliminada"}})
+    return {"mensaje":f"Reseña del número de reserva {codigo_res} ha sido eliminada"}
+
+#RF4 - Consultar reseñas de un hotel
+#De esta consulta se puede hacer o proyección de los datos o desde apex solo tomar los campos pertinentes.
+@app.get("/resenas/hotel/{id_hotel}")
+def get_resenas_hotel(id_hotel:int):
+    return list(db["resenas"].find({"id_hotel":id_hotel},{"_id":0}))
+
+#RF5 - Marcar reseña como útil
+@app.patch("/resenas/{codigo_res}/{correo}")
+def marcar_resena_util(codigo_res:int, correo:str):
+    resena = db["resenas"].find_one({"codigo_confirmacion":codigo_res}, {"_id":0})
+    if not resena:
+        return {"error": "Reseña no encontrada"}
+
+    if correo in resena.get("votos_resena", []):
+        db["resenas"].update_one(
+            {"codigo_confirmacion":codigo_res},
+            {
+                "$pull": {"votos_resena": correo},
+                "$inc": {"votos": -1}
+            }
+        )
+        return {"mensaje":f"Reseña ya no está marcada para {correo}"}
+    
+    else:
+        db["resenas"].update_one(
+            {"codigo_confirmacion":codigo_res},
+            {
+                "$push": {"votos_resena": correo},
+                "$inc": {"votos": 1}
+            }
+        )
+        return {"mensaje":f"Reseña marcada como útil por {correo}"}
+    
+#RF6 - Consultar historial de reseñas propias
+@app.get("/resenas/usuario/{correo}")
+def historial_resenas(correo:str):
+    return list(db["resenas"].find({"correo_cliente":correo},{"_id":0, "estado":1, "calificacion":1, "respuesta_administrador":1, "votos":1, "fecha_creacion":1, "id_hotel":1, "nombre_hotel":1}))
+ 
+#RF7 - Responder reseña (agregar o editar)
+#Los datos que recibe este patch tienen que ser de la forma {"respuesta_administrador":comentario}
+@app.patch("/resenas/{codigo_res}/respuesta")
+def responder_resena(codigo_res:int, datos:dict):
+    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"respuesta_administrador":datos["respuesta_administrador"]}})
+    return {"mensaje":f"Respuesta del hotel del número de reserva {codigo_res} añadida"}
+
+#RF9 - Destacar reseña
+@app.patch("/resenas/{codigo_res}/destacar")
+def destacar_resena(codigo_res:int):
+    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"destacada":True}})
+    return {"mensaje":f"Reseña {codigo_res} marcada como destacada"}
