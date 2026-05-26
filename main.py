@@ -15,11 +15,11 @@ app.add_middleware(
 
 #os.environ para despliegue. Descomente cuando ya probó todo local.
 #Conexion API
-#client = MongoClient(os.environ["MONGO_URI"])
+client = MongoClient(os.environ["MONGO_URI"])
 # TODO: conectarse al cluster Admonsis  
 
 #Host local
-client = MongoClient("mongodb://ISIS2304F27202610:Y5X4Ku2ekSCh@157.253.236.88:8087")
+#client = MongoClient("")
 # TODO: conectarse a la base de datos Admonsis  
 db = client["ISIS2304F27202610"]
 
