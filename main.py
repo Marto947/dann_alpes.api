@@ -241,7 +241,21 @@ def responder_resena(codigo_res:int, datos:dict):
     return {"mensaje":f"Respuesta del hotel del número de reserva {codigo_res} añadida"}
 
 #RF9 - Destacar reseña
+# @app.patch("/resenas/{codigo_res}/destacar")
+# def destacar_resena(codigo_res:int):
+#     resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"destacada":True}})
+#     return {"mensaje":f"Reseña {codigo_res} marcada como destacada"}
+
+
 @app.patch("/resenas/{codigo_res}/destacar")
 def destacar_resena(codigo_res:int):
-    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"destacada":True}})
-    return {"mensaje":f"Reseña {codigo_res} marcada como destacada"}
+    resultado = db["resenas"].update_one(
+        {"codigo_confirmacion": str(codigo_res)},
+        {"$set": {"destacada": True}}
+    )
+
+    return {
+        "matched_count": resultado.matched_count,
+        "modified_count": resultado.modified_count
+    }
+
