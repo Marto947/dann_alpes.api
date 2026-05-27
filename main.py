@@ -16,11 +16,11 @@ app.add_middleware(
 
 #os.environ para despliegue. Descomente cuando ya probó todo local.
 #Conexion API
-client = MongoClient(os.environ["MONGO_URI"])
+# client = MongoClient(os.environ["MONGO_URI"])
 # TODO: conectarse al cluster Admonsis  
 
 #Host local
-#client = MongoClient("")
+client = MongoClient("mongodb://ISIS2304F27202610:Y5X4Ku2ekSCh@157.253.236.88:8087")
 # TODO: conectarse a la base de datos Admonsis  
 db = client["ISIS2304F27202610"]
 
@@ -200,7 +200,16 @@ def delete_resena(codigo_res:int):
 @app.get("/resenas/hotel/{id_hotel}")
 def get_resenas_hotel(id_hotel:int):
     return list(db["resenas"].find({"id_hotel":id_hotel},{"_id":0}))
-
+  
+  
+  
+#RF9 - Destacar reseña
+@app.patch("/resenas/destacar/{codigo_res}")
+def destacar_resena(codigo_res:int):
+    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"destacada":True}})
+    return {"mensaje":f"Reseña {codigo_res} marcada como destacada"}
+  
+  
 #RF5 - Marcar reseña como útil
 @app.patch("/resenas/{codigo_res}/{correo}")
 def marcar_resena_util(codigo_res:int, correo:str):
@@ -240,8 +249,4 @@ def responder_resena(codigo_res:int, datos:dict):
     resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"respuesta_administrador":datos["respuesta_administrador"]}})
     return {"mensaje":f"Respuesta del hotel del número de reserva {codigo_res} añadida"}
 
-#RF9 - Destacar reseña
-@app.patch("/resenas/{codigo_res}/destacar")
-def destacar_resena(codigo_res:int):
-    resultado = db["resenas"].update_one({"codigo_confirmacion":codigo_res}, {"$set":{"destacada":True}})
-    return {"mensaje":f"Reseña {codigo_res} marcada como destacada"}
+
