@@ -137,6 +137,16 @@ def comparacion(ciudad:str, pais:str):
 ]
     return list( db["resenas"].aggregate(pipeline))
 
+@app.get("/resenas/{codigo_res}")
+def get_resena(codigo_res: int):
+    resena = db["resenas"].find_one(
+        {"codigo_confirmacion": codigo_res},
+        {"_id": 0}
+    )
+    if not resena:
+        return {"error": "Reseña no encontrada"}
+    return resena
+
 # Inserciones
 
 """
