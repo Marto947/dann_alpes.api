@@ -231,7 +231,7 @@ def marcar_resena_util(codigo_res:int, correo:str):
 #RF6 - Consultar historial de reseñas propias
 @app.get("/resenas/usuario/{correo}")
 def historial_resenas(correo:str):
-    return list(db["resenas"].find({"correo_cliente":correo},{"_id":0, "estado":1, "calificacion":1, "respuesta_administrador":1, "votos":1, "fecha_creacion":1, "id_hotel":1, "nombre_hotel":1}))
+    return list(db["resenas"].find({"correo_cliente":correo},{"_id":0, "estado":1, "calificacion":1, "respuesta_administrador":1, "votos":1, "fecha_creacion":1, "id_hotel":1, "nombre_hotel":1, "codigo_confirmacion":1}))
  
 #RF7 - Responder reseña (agregar o editar)
 #Los datos que recibe este patch tienen que ser de la forma {"respuesta_administrador":comentario}
